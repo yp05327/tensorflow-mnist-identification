@@ -10,7 +10,6 @@ from PIL import Image, ImageFilter
 from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.examples.tutorials.mnist import mnist
 
-
 def analysis(im):
     # 读取保存的模型
     images_placeholder=tf.placeholder(tf.float32, shape=(1,mnist.IMAGE_PIXELS))
@@ -22,11 +21,20 @@ def analysis(im):
         saver.restore(sess, os.path.abspath('.')+'/model.ckpt-49999')
         prediction=tf.argmax(logits,1)
         return prediction.eval(feed_dict={images_placeholder: [im]}, session=sess)
-
+    
+def change_to_rgb(img):
+    img.load()
+    newimg = Image.new('RGB', img.size, (255, 255, 255))
+    newimg.paste(img, mask=img.split()[3])
+    return newimg
 
 def get_image(file):
     # 读取图片
-    im=Image.open(file)
+    im = Image.open(file)
+    
+    if im.mode == 'RGBA':
+        im = change_to_rgb(im)
+    
     width = im.size[0]
     height = im.size[1]
     pix = im.load()
@@ -54,7 +62,7 @@ def get_image(file):
     base_height = int(height * (1 + base_scale))
     baseImage = Image.new('RGB', (base_width, base_height), (255,255,255))
     baseImage.paste(im, ((base_width - width)/2, (base_height - height)/2))
-    baseImage.show()
+    
     # 将图像数据归一化并转换成list
     baseImage.thumbnail((28,28))
     baseImage=baseImage.convert('L')
@@ -98,7 +106,9 @@ def get_image(file):
 def main(_):
     im = get_image(FLAGS.image_dir)
     result = analysis(im)
-    print 'The number is:' + str(result[0])
+    if FLAGS.del_image:
+        os.remove(FLAGS.image_dir)
+    print str(result[0])
     
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -107,6 +117,11 @@ if __name__ == '__main__':
       type=str,
       default='num.jpg',
       help='Directory of the image'
+  )
+  parser.add_argument(
+      '--del_image',
+      default=False,
+      help='Whether delete the image'
   )
   
   FLAGS, unparsed = parser.parse_known_args()
